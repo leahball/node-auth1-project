@@ -1,6 +1,8 @@
 // Require `checkUsernameFree`, `checkUsernameExists` and `checkPasswordLength`
 // middleware functions from `auth-middleware.js`. You will need them here!
 const router = require("express").Router();
+const User = require("./../users/users-model");
+const bcrypt = require('bcryptjs')
 const {
   checkPasswordLength,
   checkUsernameExists,
@@ -30,7 +32,14 @@ const {
   }
  */
 router.post("/register", checkPasswordLength, checkUsernameFree, (req, res, next) => {
-  res.json("register");
+  const { username, password } = req.body
+  const hash = bcrypt.hashSync(password, 8)
+
+  User.add({ username, password: hash })
+  .then(saved => {
+    res.status(201).json(saved)
+  })
+  .catch(next)
 });
 
 /**
@@ -49,7 +58,15 @@ router.post("/register", checkPasswordLength, checkUsernameFree, (req, res, next
   }
  */
 router.post("/login", checkUsernameExists, (req, res, next) => {
-  res.json("login");
+  const { password } = req.body
+  if (bcrypt.compareSync(password, req.user.password)) {
+    // make it so the cookie is set on the client
+    // make it so server stores a session with a session id
+    req.session.user = req.user
+    res.json({ message: `Welcome ${req.user.username}!` })
+  }else {
+    next({ status: 401, message: "Invalid credentials"})
+  }
 });
 
 /**
